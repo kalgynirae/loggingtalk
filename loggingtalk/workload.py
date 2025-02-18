@@ -6,7 +6,7 @@ from subprocess import PIPE
 from typing import Awaitable, Callable, TypeVar
 
 from .logging import Color, Format, log_prefix
-from .subprocess import run_and_log
+from .subprocess import run, run_shell
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,11 @@ async def do_stuff(
         ),
     )
     logger.info("Starting jobs...")
-    _, _, _ = await asyncio.gather(
-        run_job(job1),
+    _, _, _, _ = await asyncio.gather(
+        run_job(numbers),
         run_job(job2_better if better_subprocess else job2),
-        run_job(job3),
+        run_job(useful_work),
+        run_job(complex_shell),
         return_exceptions=True,
     )
 
@@ -61,7 +62,7 @@ async def run_job(job: Callable[[], Awaitable[T]]) -> T:
     return result
 
 
-async def job1() -> None:
+async def numbers() -> None:
     await asyncio.sleep(0.4)
     for n in range(1, 6):
         await asyncio.sleep(0.2)
@@ -88,16 +89,20 @@ async def job2() -> None:
 async def job2_better() -> None:
     await asyncio.sleep(0.1)
     evil_filename = f"lib/loggingtalk/foobar.txt: No such file or directory\n{datetime.now():%Y-%m-%d %H:%M:%S}      DEBUG: some_other_file.txt"
-    _result = await run_and_log(
+    _result = await run(
         ["grep", "foobar", evil_filename],
         cwd=Path("/usr/local"),
     )
     # ... do something with stdout ...
 
 
-async def job3() -> None:
+async def useful_work() -> None:
     logger.info("Starting to do some useful work!")
     await asyncio.sleep(0.3)
     logger.info("Almost done doing useful work!")
     await asyncio.sleep(1.2)
     logger.info("Done!")
+
+
+async def complex_shell() -> None:
+    await run_shell("ssh -n git@github.com | cat -n")

@@ -16,15 +16,16 @@ class Result:
     stderr: bytearray
 
 
-async def run_and_log(
+async def run(
     args: list[str | Path],
     *,
     cwd: Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> Result:
     stdout_buffer = bytearray()
     stderr_buffer = bytearray()
     proc = await asyncio.create_subprocess_exec(
-        *args, cwd=cwd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE
+        *args, cwd=cwd, env=env, stdin=DEVNULL, stdout=PIPE, stderr=PIPE
     )
     await asyncio.gather(
         _read_and_log_stream("stdout", proc.stdout, stdout_buffer),
@@ -34,6 +35,12 @@ async def run_and_log(
     if proc.returncode != 0:
         logger.info("  %s", Format(dim=True).apply(f":exited: {proc.returncode}"))
     return Result(proc.returncode, stdout_buffer, stderr_buffer)
+
+
+async def run_shell(
+    cmd: str, *, cwd: Path | str | None = None, env: dict[str, str] | None = None
+):
+    return await run(["bash", "-c", "--", cmd], cwd=cwd, env=env)
 
 
 async def _read_and_log_stream(

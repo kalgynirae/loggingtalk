@@ -19,8 +19,8 @@ def configure_logging(
     level: int,
     *,
     colors: bool = True,
-    newlines: bool = True,
     prefixes: bool = True,
+    replace_newlines: bool = True,
     subprocesses: bool = True,
 ) -> None:
     # The logger hierarchy mirrors the module hierarchy, making it easy
@@ -29,16 +29,29 @@ def configure_logging(
         logging.getLogger("asyncio").setLevel(logging.WARNING)
 
     prefix_format = "%(prefix)s" if prefixes else ""
-    formatter = logging.Formatter(
-        fmt=f"%(asctime)s %(levelname)10s: {prefix_format}%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+    fmt = f"%(asctime)s %(levelname)10s: {prefix_format}%(message)s"
+    datefmt = "%Y-%m-%d %H:%M:%S"
+    color_formatter = Formatter(
+        fmt=fmt,
+        datefmt=datefmt,
+        include_color_escapes=colors,
+        replace_newlines=replace_newlines,
+    )
+    plain_formatter = Formatter(
+        fmt=fmt,
+        datefmt=datefmt,
+        include_color_escapes=False,
+        replace_newlines=replace_newlines,
     )
 
     file_handler = logging.FileHandler("logs/loggingtalk.log")
-    file_handler.setFormatter(formatter)
+    file_handler.setFormatter(color_formatter)
+
+    file_handler = logging.FileHandler("logs/loggingtalk-plain.log")
+    file_handler.setFormatter(plain_formatter)
 
     stderr_handler = logging.StreamHandler()
-    stderr_handler.setFormatter(formatter)
+    stderr_handler.setFormatter(color_formatter)
 
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)
@@ -48,13 +61,7 @@ def configure_logging(
     stderr_handler.setLevel(level)
 
     if colors:
-        if newlines:
-            logging.setLogRecordFactory(FormattingSingleLineLogRecord)
-        else:
-            logging.setLogRecordFactory(FormattingLogRecord)
-    else:
-        if newlines:
-            raise RuntimeError("newlines=True requires colors=True")
+        logging.setLogRecordFactory(FormattingLogRecord)
 
     if prefixes:
         file_handler.addFilter(PrefixFilter())
@@ -156,6 +163,12 @@ class Formatted:
     def __post_init__(self, format: Format) -> str:
         object.__setattr__(self, "formatter", format.make_formatter())
 
+    def __repr__(self) -> str:
+        return repr(self.value)
+
+    def __str__(self) -> str:
+        return str(self.value)
+
     def activate(self) -> _ActivatedFormatted:
         return _ActivatedFormatted(self.value, self.formatter)
 
@@ -201,6 +214,9 @@ def _format_arg(arg: T) -> T | Formatted:
         return arg
 
 
+_use_color = ContextVar("_use_color")
+
+
 class FormattingLogRecord(logging.LogRecord):
     def getMessage(self):
         msg = str(self.msg)
@@ -210,8 +226,11 @@ class FormattingLogRecord(logging.LogRecord):
         if isinstance(self.args, dict):
             msg = msg % self.args
         elif isinstance(self.args, tuple):
-            formatted_args = tuple(map(_format_arg, self.args))
-            msg = msg % formatted_args
+            if _use_color.get(False):
+                formatted_args = tuple(map(_format_arg, self.args))
+                msg = msg % formatted_args
+            else:
+                msg = msg % self.args
         else:
             print(
                 f"FormattingLogRecord: Unexpected type for self.args ({type(self.args).__name__})",
@@ -248,6 +267,25 @@ def log_subprocess_execs(event_name: str, event_args: Any) -> None:
         logger.info(f"Running %s{extra_message}", SubprocessArgs(args), *extra_args)
 
 
-class FormattingSingleLineLogRecord(FormattingLogRecord):
-    def getMessage(self) -> str:
-        return super().getMessage().replace("\n", "␤")
+class Formatter(logging.Formatter):
+    def __init__(
+        self,
+        fmt: str,
+        datefmt: str,
+        *args,
+        include_color_escapes: bool,
+        replace_newlines: bool,
+        **kwargs,
+    ) -> None:
+        super().__init__(fmt, datefmt, *args, **kwargs)
+        self.include_color_escapes = include_color_escapes
+        self.replace_newlines = replace_newlines
+
+    def format(self, record: logging.LogRecord) -> str:
+        token = _use_color.set(self.include_color_escapes)
+        try:
+            s = super().format(record)
+        finally:
+            _use_color.reset(token)
+
+        return s.replace("\n", "␤") if self.replace_newlines else s
