@@ -47,14 +47,15 @@ def configure_logging(
     file_handler = logging.FileHandler("logs/loggingtalk.log")
     file_handler.setFormatter(color_formatter)
 
-    file_handler = logging.FileHandler("logs/loggingtalk-plain.log")
-    file_handler.setFormatter(plain_formatter)
+    plain_handler = logging.FileHandler("logs/loggingtalk-plain.log")
+    plain_handler.setFormatter(plain_formatter)
 
     stderr_handler = logging.StreamHandler()
     stderr_handler.setFormatter(color_formatter)
 
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)
+    root_logger.addHandler(plain_handler)
     root_logger.addHandler(stderr_handler)
 
     root_logger.setLevel(logging.DEBUG)
@@ -65,6 +66,7 @@ def configure_logging(
 
     if prefixes:
         file_handler.addFilter(PrefixFilter())
+        plain_handler.addFilter(PrefixFilter())
         stderr_handler.addFilter(PrefixFilter())
 
     if subprocesses:
