@@ -116,4 +116,36 @@ use of some of the other formatting features:
 
 https://github.com/kalgynirae/loggingtalk/blob/e2965c3dc4e4bcb41a2cac13bace53f112e54d50/loggingtalk/logging.py#L255-L269
 
+## Colors (and other formatting)
+
+There are many approaches to adding color to logs; the one shown here
+is capable of coloring individual *arguments to logging calls*, either
+explicitly or based on the types of the arguments. For example, in a
+call like the following, the path argument can be colored simply by being
+a `Path` object:
+
+```python
+logger.info("Loaded %s of config from %s", n_lines, config_path)
+```
+
+In this implementation, that's set up by this hard-coded list of types
+and formats:
+
+https://github.com/kalgynirae/loggingtalk/blob/4e509d4ef58cd2e17bb7bf2f46619e5cffe20cc5/loggingtalk/logging.py#L190-L193
+
+If this were to be used in a larger codebase, it would make sense to
+define a function for adding types to this list.
+
+There's also a decorator for easily attaching formatting to a class
+definition:
+
+https://github.com/kalgynirae/loggingtalk/blob/4e509d4ef58cd2e17bb7bf2f46619e5cffe20cc5/loggingtalk/logging.py#L199-L206
+
+https://github.com/kalgynirae/loggingtalk/blob/4e509d4ef58cd2e17bb7bf2f46619e5cffe20cc5/loggingtalk/logging.py#L244-L246
+
+The full implementation for turning all of this configuration into
+actual colored logs is too complex to quote here, but I intend to add
+helpful documentation within the code itself. (But I have not done this
+yet!)
+
 ## (…and more coming soon!)
