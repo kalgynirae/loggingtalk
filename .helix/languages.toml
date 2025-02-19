@@ -6,3 +6,7 @@ auto-format = true
 [language-server.ruff]
 command = "uv"
 args = ["run", "ruff", "server"]
+
+[[language]]
+name = "markdown"
+text-width = 72
