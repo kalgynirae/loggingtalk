@@ -18,6 +18,11 @@ class NewlineReplacingFormatter(logging.Formatter):
         return super().format(record).replace("\n", "␤")
 ```
 
+Note: If for some reason you're not allowed to write unusual characters
+in your source code, you can use Python's [`\N{name}` escape
+sequence](https://docs.python.org/3/reference/lexical_analysis.html#escape-sequences):
+`"\N{SYMBOL FOR NEWLINE}"`
+
 ## Prefixes
 
 Adding prefixes to logs generated within specific sections of code can
@@ -70,5 +75,45 @@ logging.basicConfig(
     fmt="%(asctime)s %(levelname)8s: %(prefix)s%(message)s",
 )
 ```
+
+## Logging all subprocess execs (via audit)
+
+[PEP 578](https://peps.python.org/pep-0578/) introduced audit
+hooks in Python 3.8, which allow for monitoring [certain kinds of
+actions](https://docs.python.org/3/library/audit_events.html) taken by
+the Python runtime. *subprocess.Popen* events are particularly useful.
+
+At its simplest, this can look like:
+
+```python
+def log_subprocess_events(event_name: str, event_args: Any) -> None:
+    if event_name == "subprocess.Popen":
+        executable, args, cwd, env = event_args
+        logger.info(
+            "Running subprocess «%s» (cwd: %s, env: %s)",
+            shlex.join(args),
+            cwd,
+            env,
+        )
+
+sys.addaudithook(log_subprocess_events)
+```
+
+Some notes about this implementation:
+
+* The use of `shlex.join()` is important to ensure that the subprocess
+arguments are logged unambiguously. For example, consider the arguments
+`["grep", "foo", " bar.txt"]`—the quoting added by `shlex.join()` will
+make it clear that the space is at the beginning of the third argument.
+
+* For the delimiters, I like to use `«»` as I find them visually
+intuitive and I've never seen them actually appear in command arguments.
+(If they might appear in *your* command arguments, consider choosing a
+different set of delimiters!)
+
+There is a much fancier implementation of this in this repo that makes
+use of some of the other formatting features:
+
+https://github.com/kalgynirae/loggingtalk/blob/e2965c3dc4e4bcb41a2cac13bace53f112e54d50/loggingtalk/logging.py#L255-L269
 
 ## (…and more coming soon!)
