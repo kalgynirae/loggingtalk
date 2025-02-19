@@ -1,12 +1,16 @@
 """Demonstrate some useful logging stuff.
 
-Usage: python3 -m loggingtalk.main [SLIDE_NUMBER]
+Usage: python3 -m loggingtalk.main [SLIDE NUMBER]
+
+I recommend also piping into less (`… |& less`) with the following set:
+  LESS='-SR -#.1 --redraw-on-quit'
 """
 
 import asyncio
 import logging
 import sys
 import traceback
+from pathlib import Path
 
 from .logging import configure_logging
 from .workload import do_stuff
@@ -24,32 +28,38 @@ logger = logging.getLogger("loggingtalk.main")
 def slide1():
     """Run the workload with standard logging"""
     configure_logging(
-        logging.DEBUG, colors=False, newlines=False, prefixes=False, subprocesses=False
+        logging.DEBUG,
+        colors=False,
+        prefixes=False,
+        replace_newlines=False,
+        subprocesses=False,
     )
     asyncio.run(do_stuff())
 
 
 def slide2():
     """Add prefixes"""
-    configure_logging(logging.DEBUG, colors=False, newlines=False, subprocesses=False)
+    configure_logging(
+        logging.DEBUG, colors=False, replace_newlines=False, subprocesses=False
+    )
     asyncio.run(do_stuff())
 
 
 def slide3():
     """Add some color"""
-    configure_logging(logging.DEBUG, newlines=False, subprocesses=False)
+    configure_logging(logging.DEBUG, replace_newlines=False, subprocesses=False)
     asyncio.run(do_stuff())
 
 
 def slide4():
     """Log all subprocess execs"""
-    configure_logging(logging.DEBUG, newlines=False)
+    configure_logging(logging.DEBUG, replace_newlines=False)
     asyncio.run(do_stuff())
 
 
 def slide5():
     """Log all subprocess output as it happens"""
-    configure_logging(logging.DEBUG, newlines=False)
+    configure_logging(logging.DEBUG, replace_newlines=False)
     asyncio.run(do_stuff(better_subprocess=True))
 
 
@@ -71,6 +81,8 @@ if __name__ == "__main__":
     except ValueError:
         traceback.print_exc()
         sys.exit(1)
+
+    Path("logs").mkdir(exist_ok=True)
 
     if slide_func := globals().get(f"slide{slide_number}"):
         slide_func()
